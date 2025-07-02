@@ -8,6 +8,7 @@ import {
   addEdge,
   applyNodeChanges,
   useReactFlow,
+  SelectionMode,
   applyEdgeChanges
 } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
@@ -55,15 +56,14 @@ function App() {
   const onKeyDown = useCallback((event) => {
     // console.log('Edges', edges);
     if (event.key === 'Delete' || event.key === 'Backspace') {
-      console.log('Delete or Backspace pressed');
       setNodes((nds) => nds.filter((node) => !node.selected));
       setEdges((eds) => eds.filter((edge) => !edge.selected));
     }
   }, [setNodes, setEdges]);
 
-  useEffect(() => {
-    console.log('Updated Edges:', edges);
-  }, [edges]);
+  // useEffect(() => {
+  //   console.log('Updated Edges:', edges);
+  // }, [edges]);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_NODES_KEY, JSON.stringify(nodes));
@@ -85,12 +85,19 @@ function App() {
 
   // This specific handler is for when the text inside our custom TextNode changes
   const onNodeTextChange = useCallback((id, newValue) => {
-    console.log('Node changes:', newValue);
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === id) {
           // It's important to create a *new* data object to trigger React's re-render
-          return { ...node, data: { ...node.data, label: newValue } };
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              label: newValue,
+              lastAccessed: Date.now() // Update last accessed time
+            },
+          };
+
         }
         return node;
       })
@@ -101,7 +108,7 @@ function App() {
   const onConnect = useCallback((params) => {
     setEdges((eds) => {
       const updatedEdges = addEdge(params, eds);
-      console.log('Edges after connect:', updatedEdges);
+      // console.log('Edges after connect:', updatedEdges);
       localStorage.setItem(LOCAL_STORAGE_EDGES_KEY, JSON.stringify(updatedEdges));
       return updatedEdges;
     });
@@ -116,10 +123,13 @@ function App() {
         //   y: window.innerHeight/2 - 50,
         // }) : { x: Math.random() * 500, y: Math.random() * 500 }, // Fallback to Random position
         position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
-        data: { value: 'New Ethereal Note' },
+        data: {
+          value: 'New Ethereal Note',
+          lastAccessed: Date.now(), // Track when this node was last accessed
+        },
         type: 'textNode', // Use our custom TextNode type
-        lastAccessed: Date.now(),
       };
+      console.log("Node:", newNode);
       return [...nds, newNode];
     });
     setTimeout(() => {
@@ -179,8 +189,11 @@ function App() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           fitView // Zooms to fit all nodes initially
+          maxZoom={5}
+          minZoom={0.5}
           colorMode='dark'
           nodeTypes={nodeTypes}
+          selectionMode={SelectionMode.Partial}
         >
           <Controls /> {/* Zoom, pan, fit buttons */}
           <MiniMap /> {/* Small overview map */}
