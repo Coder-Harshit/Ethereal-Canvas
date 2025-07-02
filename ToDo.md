@@ -1,0 +1,1 @@
+1. Make the custom input node draggable via some modifier key pressed down like the ctrl

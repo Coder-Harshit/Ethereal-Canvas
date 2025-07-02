@@ -1,5 +1,7 @@
 // src/components/TextNode.jsx
 import { Handle, Position } from '@xyflow/react'; // Handle is for connecting nodes
+import { memo } from 'react';
+import './TextNode.css'; // Import custom styles for our node
 
 // This component will render our custom node
 function TextNode({ id, data }) {
@@ -23,8 +25,8 @@ function TextNode({ id, data }) {
         onChange={onLabelChange} // Update text when user types
         className="nodrag" // Prevents dragging the note when dragging inside the textarea
         rows={5} // Default number of rows
-        cols={25} // Default number of columns
-        style={{ width: '100%', height: '100%', resize: 'none' }} // Make it fill the note area
+        cols={20} // Default number of columns
+        // style={{ width: '100%', height: '100%', resize: 'none' }} // Make it fill the note area
       />
 
       {/* Handle for outgoing connections (bottom of the note) */}
@@ -33,4 +35,4 @@ function TextNode({ id, data }) {
   );
 }
 
-export default TextNode;
+export default memo(TextNode); // Use memo to prevent unnecessary re-renders
