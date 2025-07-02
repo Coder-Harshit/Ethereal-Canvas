@@ -7,7 +7,8 @@ import {
   Background,
   addEdge,
   applyNodeChanges,
-  useReactFlow
+  useReactFlow,
+  applyEdgeChanges
 } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css'
@@ -51,6 +52,19 @@ function App() {
   const [edges, setEdges] = useState(() => getInitialState(LOCAL_STORAGE_EDGES_KEY, initalEdges));
   const instance = useReactFlow(); // Get the React Flow instance
 
+  const onKeyDown = useCallback((event) => {
+    // console.log('Edges', edges);
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      console.log('Delete or Backspace pressed');
+      setNodes((nds) => nds.filter((node) => !node.selected));
+      setEdges((eds) => eds.filter((edge) => !edge.selected));
+    }
+  }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    console.log('Updated Edges:', edges);
+  }, [edges]);
+
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_NODES_KEY, JSON.stringify(nodes));
   }, [nodes]);
@@ -59,13 +73,15 @@ function App() {
     localStorage.setItem(LOCAL_STORAGE_EDGES_KEY, JSON.stringify(edges));
   }, [edges]);
 
-  // Callback for when a connection is made (for future linking)
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
-
   // This handles all node changes (dragging, selection, etc.) from React Flow
   const onNodesChange = useCallback((changes) => {
     setNodes((nds) => applyNodeChanges(changes, nds));
   }, [setNodes]);
+
+  // This handles all edge changes (dragging, selection, etc.) from React Flow
+  const onEdgesChange = useCallback((changes) => {
+    setEdges((nds) => applyEdgeChanges(changes, nds));
+  }, [setEdges]);
 
   // This specific handler is for when the text inside our custom TextNode changes
   const onNodeTextChange = useCallback((id, newValue) => {
@@ -81,6 +97,16 @@ function App() {
     );
   }, [setNodes]);
 
+  // Callback for when a connection is made (for future linking)
+  const onConnect = useCallback((params) => {
+    setEdges((eds) => {
+      const updatedEdges = addEdge(params, eds);
+      console.log('Edges after connect:', updatedEdges);
+      localStorage.setItem(LOCAL_STORAGE_EDGES_KEY, JSON.stringify(updatedEdges));
+      return updatedEdges;
+    });
+  }, [setEdges]);
+
   const addNode = useCallback(() => {
     setNodes((nds) => {
       const newNode = {
@@ -92,6 +118,7 @@ function App() {
         position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
         data: { value: 'New Ethereal Note' },
         type: 'textNode', // Use our custom TextNode type
+        lastAccessed: Date.now(),
       };
       return [...nds, newNode];
     });
@@ -110,7 +137,7 @@ function App() {
       const flowPosition = instance.screenToFlowPosition({
         // x: event.clientX,
         // y: event.clientY
-        x:  Math.random() * 500,
+        x: Math.random() * 500,
         y: Math.random() * 500, // Random position
       });
 
@@ -134,6 +161,8 @@ function App() {
       <div
         style={{ width: '100%', height: '80vh', border: '1px solid #eee' }}
         onPaste={onPaste} // Handle paste events
+        onKeyDown={onKeyDown} // Handle keydown events for delete/backspace
+        tabIndex={0} // Make the div focusable to capture key events
       >
         <ReactFlow
           nodes={
@@ -147,7 +176,7 @@ function App() {
           }
           edges={edges}
           onNodesChange={onNodesChange}
-          onEdgesChange={() => { /* This will be used later for more complex edge updates */ }}
+          onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           fitView // Zooms to fit all nodes initially
           colorMode='dark'
@@ -155,7 +184,7 @@ function App() {
         >
           <Controls /> {/* Zoom, pan, fit buttons */}
           <MiniMap /> {/* Small overview map */}
-          <Background variant="dots" gap={12} size={1} /> {/* Dotted background */}
+          <Background variant="" gap={12} size={1} /> {/* Dotted background */}
         </ReactFlow>
       </div>
       <button onClick={addNode}>Create Node</button>

@@ -26,6 +26,7 @@ function TextNode({ id, data }) {
         className="nodrag" // Prevents dragging the note when dragging inside the textarea
         rows={5} // Default number of rows
         cols={20} // Default number of columns
+        onKeyDown={e => e.stopPropagation()} // Prevent delete/backspace from bubbling up to React Flow
         // style={{ width: '100%', height: '100%', resize: 'none' }} // Make it fill the note area
       />
 
