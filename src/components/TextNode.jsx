@@ -10,7 +10,7 @@ const MIN_OPACITY = 0.3; // Minimum opacity for the note
 function TextNode({ id, data }) {
   // The `data` prop will contain `label` (our note text) and `onTextChange` (a function from App.jsx)
   const ageMs = Date.now() - (data.lastAccessed || 0);
-  const opacity = Math.trunc((Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS))*100); // Calculate opacity based on age
+  const opacity = Math.trunc((Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS)) * 100); // Calculate opacity based on age
   // console.log('Opacity:', (Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS)));
 
   const onLabelChange = (evt) => {
@@ -26,8 +26,12 @@ function TextNode({ id, data }) {
       className="p-4 border border-[#555] rounded bg-[#333] text-[#eee] shadow-lg flex flex-col box-border"
       style={{ opacity: Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS) }}
     >
-      {/* Handle for incoming connections (top of the note) */}
-      <Handle type="target" position={Position.Top} />
+      {/* Handle for incoming connections (left of the note) */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className='!bg-amber-200'
+      />
 
       <textarea
         value={data.label} // Display the current text
@@ -39,8 +43,12 @@ function TextNode({ id, data }) {
       // style={{ width: '100%', height: '100%', resize: 'none' }} // Make it fill the note area
       />
 
-      {/* Handle for outgoing connections (bottom of the note) */}
-      <Handle type="source" position={Position.Bottom} id="a" />
+      {/* Handle for outgoing connections (right of the note) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className='!bg-green-200'
+      />
     </div>
   );
 }
