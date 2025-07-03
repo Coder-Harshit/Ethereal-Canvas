@@ -1,8 +1,11 @@
 /* src/App.css */
 #root {
-  width: 100vw; /* Viewport width */
-  height: 100vh; /* Viewport height */
-  overflow: hidden; /* Prevent scrolling outside our canvas */
+  width: 100vw;
+  /* Viewport width */
+  height: 100vh;
+  /* Viewport height */
+  overflow: hidden;
+  /* Prevent scrolling outside our canvas */
   display: flex;
   flex-direction: column;
   /* align-items: center; */
@@ -10,7 +13,7 @@
 }
 
 .App {
-  padding: 1rem;
+  padding: .5rem;
   /* width: 100%; */
   /* height: 100%; */
   /* The canvas will fill this, so make it a flex container to center the title */
@@ -19,25 +22,61 @@
   /* align-items: center; */
   /* padding: 10px; */
   /* align-items: stretch; */
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.App > header {
-  display: flex; justify-content: space-between; align-items: center;
+.canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.header-overlay {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  pointer-events: none;
+  /* let clicks pass through */
+}
+
+.header-overlay h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-main);
+}
+
+.App>header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
 }
-.App > header h1 {
+
+.App>header h1 {
   font-size: 1.8rem;
   font-weight: 600;
   margin: 0;
 }
-.App > header button {
+
+.App>header button {
   font-size: 1rem;
 }
+
 .ReactFlow__viewport {
   background: transparent;
 }
+
 .ReactFlow__pane {
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   overflow: hidden;
 }

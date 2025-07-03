@@ -9,7 +9,8 @@ import {
   applyNodeChanges,
   useReactFlow,
   SelectionMode,
-  applyEdgeChanges
+  applyEdgeChanges,
+  Panel
 } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css'
@@ -166,10 +167,14 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Ethereal Canvas</h1>
+      {/* <div className='flex justify-center items-center p-4 bg-transparent'> */}
+      <div className='header-overlay'>
+        <h1>Ethereal Canvas</h1>
+      </div>
       {/* React Flow container */}
       <div
-        style={{ width: '100%', height: '80vh', border: '1px solid #eee' }}
+        className='canvas-container'
+        // style={{ width: '100%', height: '80vh', border: '1px solid #eee' }}
         onPaste={onPaste} // Handle paste events
         onKeyDown={onKeyDown} // Handle keydown events for delete/backspace
         tabIndex={0} // Make the div focusable to capture key events
@@ -193,14 +198,19 @@ function App() {
           minZoom={0.5}
           colorMode='dark'
           nodeTypes={nodeTypes}
+          proOptions={{ hideAttribution: true }} // Hide attribution for pro features
           selectionMode={SelectionMode.Partial}
         >
           <Controls /> {/* Zoom, pan, fit buttons */}
           <MiniMap /> {/* Small overview map */}
-          <Background variant="" gap={12} size={1} /> {/* Dotted background */}
+          <Background variant="dots" gap={12} size={1} /> {/* Dotted background */}
+          {/* <Panel position="top-right" className="bg-transparent text-[#eee] p-2 rounded shadow-lg"> */}
+          <Panel position="top-right" className="bg-transparent p-2">
+            {/* <button onClick={addNode} className='bg-[#141414]'>Create Node</button> */}
+            <button onClick={addNode} className='bg-black bg-opacity-30 hover:bg-opacity-50 text-white px-4 py-2 rounded pointer-events-auto'>Create Node</button>
+          </Panel>
         </ReactFlow>
       </div>
-      <button onClick={addNode}>Create Node</button>
     </div>
   );
 }

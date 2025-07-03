@@ -2,11 +2,11 @@
 
 :root {
   /* theme colors */
-  --bg-start: #1e1e2f;
-  --bg-end: #23232e;
-  --node-bg: #2a2a3f;
-  --node-border: #4b4b5a;
-  --node-hover: #5c5c75;
+  --bg-start: #757575;
+  --bg-end: #000000;
+  --node-bg: #454545;
+  --node-border: #545454;
+  --node-hover: #7e7e7e;
   --text-main: #e0e0ff;
   --accent: #7f80ff;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
