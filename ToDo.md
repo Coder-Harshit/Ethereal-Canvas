@@ -1,1 +1,1 @@
-1. Make the custom input node draggable via some modifier key pressed down like the ctrl
+1. Make the "in" handle 'vibe' when out node is pulled out & vice versa
