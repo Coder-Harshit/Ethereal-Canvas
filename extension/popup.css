@@ -1,0 +1,24 @@
+body {
+    font-family: sans-serif;
+    padding: 10px;
+    width: 200px;
+}
+
+button {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.message {
+    color: green;
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+.error {
+    color: red;
+    margin-top: 10px;
+    font-size: 0.9em;
+}
