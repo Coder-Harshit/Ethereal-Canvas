@@ -25,6 +25,8 @@ function TextNode({ id, data }) {
     <div
       className="p-4 border border-[#555] rounded bg-[#333] text-[#eee] shadow-lg flex flex-col box-border"
       style={{ opacity: Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS) }}
+      onWheel={e => e.stopPropagation()} // Prevent scroll wheel from bubbling up to React Flow
+
     >
       {/* Handle for incoming connections (left of the note) */}
       <Handle
@@ -40,7 +42,10 @@ function TextNode({ id, data }) {
         rows={5} // Default number of rows
         cols={20} // Default number of columns
         onKeyDown={e => e.stopPropagation()} // Prevent delete/backspace from bubbling up to React Flow
-      // style={{ width: '100%', height: '100%', resize: 'none' }} // Make it fill the note area
+        onWheel={e => {
+          console.log("Textarea onWheel");
+          e.stopPropagation()
+        }} // Prevent scroll wheel from bubbling up to React Flow
       />
 
       {/* Handle for outgoing connections (right of the note) */}

@@ -1,5 +1,5 @@
 // src/app.jsx
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -98,7 +98,6 @@ function App() {
               lastAccessed: Date.now() // Update last accessed time
             },
           };
-
         }
         return node;
       })
@@ -139,6 +138,9 @@ function App() {
   }, [setNodes, instance, onNodeTextChange]);
 
   const onPaste = useCallback((event) => {
+    if (event.target.tagName.toLowerCase() === 'input' || event.target.tagName.toLowerCase() === 'textarea') {
+      return; // Ignore paste events in input or textarea elements
+    }
     event.preventDefault(); // Prevent default browser paste behavior
     const pastedText = event.clipboardData.getData('text');
     console.log('Pasted text:', pastedText);
@@ -162,8 +164,78 @@ function App() {
         return [...nds, newNode];
       });
     }
-  }, [instance, setNodes, onNodeTextChange]); // Add dependencies
+  }, [instance, setNodes, onNodeTextChange]);
 
+  const pollForCapture = async (setNodes, onNodeTextChange, instance, internalIdRef) => {
+    // need to poll the backend for captured data
+    try {
+      const res = await fetch('http://localhost:3001/get-capture');
+      if (res.status===200) {
+        const { capturedData } = await res.json();
+        // console.log('Captured Data:', capturedData);
+
+        let newNodeContent = '';
+        // inserting new node with captured data
+        if (capturedData.text) {
+          newNodeContent = capturedData.title + '\n\n' + capturedData.text + '\n\n' + capturedData.url;
+        } else {
+          newNodeContent = capturedData.title + '\n\n' + capturedData.url;
+        }
+        console.log(newNodeContent);
+
+        setNodes((nds) => {
+          const newNode = {
+            id: uuidv4(),
+            position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
+            data: {
+              value: newNodeContent,
+              label: newNodeContent,
+              onTextChange: onNodeTextChange,
+              lastAccessed: Date.now(), // Track when this node was last accessed
+            },
+            type: 'textNode',
+          }
+          return [...nds, newNode];
+        });
+
+        // fit the view to include the new node
+        setTimeout(() => {
+          instance.fitView();
+        }, 0);
+
+
+      } else if (res.status === 204) {
+        // No content
+      } else {
+        console.error('Error fetching captured data:', res.status);
+      }
+    } catch (error) {
+      console.error('Error during polling:', error);
+      if (internalIdRef && internalIdRef.current) {
+        clearInterval(internalIdRef.current);
+        internalIdRef.current = null;
+        console.warn('Stopped polling for captured notes. Local API server might be down.');
+      }
+    }
+  };
+
+  // Ref to store the interval ID so we can clear it later
+  const pollingIntervalId = useRef(null);
+  // Set up polling on component mount, clear on unmount
+  useEffect(() => {
+    // Start polling every minute
+    pollingIntervalId.current = setInterval(() => {
+      // Pass required dependencies to the polling function
+      pollForCapture(setNodes, onNodeTextChange, instance, pollingIntervalId);
+    }, 1000 * 60);
+
+    // Cleanup: clear interval when component unmounts
+    return () => {
+      if (pollingIntervalId.current) {
+        clearInterval(pollingIntervalId.current);
+      }
+    };
+  }, [setNodes, onNodeTextChange, instance]); // Dependencies for useEffect
 
   return (
     <div className="App">
@@ -174,7 +246,6 @@ function App() {
       {/* React Flow container */}
       <div
         className='canvas-container'
-        // style={{ width: '100%', height: '80vh', border: '1px solid #eee' }}
         onPaste={onPaste} // Handle paste events
         onKeyDown={onKeyDown} // Handle keydown events for delete/backspace
         tabIndex={0} // Make the div focusable to capture key events
@@ -200,7 +271,8 @@ function App() {
           nodeTypes={nodeTypes}
           proOptions={{ hideAttribution: true }} // Hide attribution for pro features
           selectionMode={SelectionMode.Partial}
-        >
+          preventScrolling={false} // Prevent scrolling when dragging nodes
+>
           <Controls /> {/* Zoom, pan, fit buttons */}
           <MiniMap /> {/* Small overview map */}
           <Background variant="dots" gap={12} size={1} /> {/* Dotted background */}
