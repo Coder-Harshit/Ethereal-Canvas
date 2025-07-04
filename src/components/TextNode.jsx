@@ -38,12 +38,11 @@ function TextNode({ id, data }) {
       <textarea
         value={data.label} // Display the current text
         onChange={onLabelChange} // Update text when user types
-        className="w-full border-none bg-transparent text-inherit font-inherit text-[14px] p-0 box-border flex-grow focus:outline-none nodrag resize-both overflow-auto" // Prevents dragging the note when dragging inside the textarea
+        className="border-none bg-transparent text-inherit font-inherit text-[14px] p-0 box-border flex-grow focus:outline-none nodrag resize overflow-auto min-w-[100px] max-w-[600px]" // Prevents dragging the note when dragging inside the textarea
         rows={5} // Default number of rows
         cols={20} // Default number of columns
         onKeyDown={e => e.stopPropagation()} // Prevent delete/backspace from bubbling up to React Flow
         onWheel={e => {
-          console.log("Textarea onWheel");
           e.stopPropagation()
         }} // Prevent scroll wheel from bubbling up to React Flow
       />

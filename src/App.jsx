@@ -94,11 +94,11 @@ function App() {
     setNodes((nds) => {
       const newNode = {
         id: uuidv4(), // ID generation
-        // position: instance ? instance.screenToFlowPosition({
-        //   x: window.innerWidth/2 - 100,
-        //   y: window.innerHeight/2 - 50,
-        // }) : { x: Math.random() * 500, y: Math.random() * 500 }, // Fallback to Random position
-        position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
+        position: instance ? instance.screenToFlowPosition({
+          x: window.innerWidth/2 - 100,
+          y: window.innerHeight/2 - 50,
+        }) : { x: Math.random() * 500, y: Math.random() * 500 }, // Fallback to Random position
+        // position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
         data: {
           value: 'New Ethereal Note',
           lastAccessed: Date.now(), // Track when this node was last accessed
@@ -107,9 +107,9 @@ function App() {
       };
       return [...nds, newNode];
     });
-    setTimeout(() => {
-      instance.fitView(); // Fit the view to include the new node
-    }, 0);
+    // setTimeout(() => {
+    //   instance.fitView(); // Fit the view to include the new node
+    // }, 0);
   }, [setNodes, instance, onNodeTextChange]);
 
   const onPaste = useCallback((event) => {
@@ -246,7 +246,16 @@ function App() {
           preventScrolling={false} // Prevent scrolling when dragging nodes
 >
           <Controls /> {/* Zoom, pan, fit buttons */}
-          <MiniMap /> {/* Small overview map */}
+          <MiniMap 
+            zoomable={true}
+            pannable={true}
+            // nodeColor={(node) => {
+            //   if (node.type === 'textNode') {
+            //     return '#00ff00'; // Green for text nodes
+            //   }
+            //   return '#ff0000'; // Red for other nodes
+            // }}
+          /> {/* Small overview map */}
           <Background variant="dots" gap={12} size={1} /> {/* Dotted background */}
           {/* <Panel position="top-right" className="bg-transparent text-[#eee] p-2 rounded shadow-lg"> */}
           <Panel position="top-right" className="bg-transparent p-2">
