@@ -36,7 +36,9 @@ function App() {
   const [edges, setEdges] = useState(() => getInitialState(LOCAL_STORAGE_EDGES_KEY, initalEdges));
   const instance = useReactFlow(); // Get the React Flow instance
 
+  //TODO: Implement the undo & redo operation keybind
   const onKeyDown = useCallback((event) => {
+    //TODO: Confirm Deletion Popup => *{checkout: https://reactflow.dev/api-reference/types/on-before-delete}*
     if (event.key === 'Delete' || event.key === 'Backspace') {
       setNodes((nds) => nds.filter((node) => !node.selected));
       setEdges((eds) => eds.filter((edge) => !edge.selected));
@@ -210,6 +212,9 @@ function App() {
   }, [setNodes, onNodeTextChange, instance]); // Dependencies for useEffect
 
   return (
+    // TODO: Make the viewport controls more natural flowing
+    // TODO: add some kind of view port controls help button
+
     <div className="App">
       {/* <div className='flex justify-center items-center p-4 bg-transparent'> */}
       <div className='header-overlay'>

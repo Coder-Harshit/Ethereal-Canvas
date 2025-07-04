@@ -29,6 +29,7 @@ function TextNode({ id, data }) {
 
     >
       {/* Handle for incoming connections (left of the note) */}
+      {/*TODO: Make the "in" handle 'vibe' when out node is pulled out*/}
       <Handle
         type="target"
         position={Position.Left}
@@ -48,6 +49,7 @@ function TextNode({ id, data }) {
       />
 
       {/* Handle for outgoing connections (right of the note) */}
+      {/*TODO: Make the "out" handle 'vibe' when in node is pulled out*/}
       <Handle
         type="source"
         position={Position.Right}
