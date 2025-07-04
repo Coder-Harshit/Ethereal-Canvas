@@ -28,16 +28,7 @@ import {
 
 } from './placeholder';
 import nodeTypes from './nodetypes';
-
-const getInitialState = (key, defaultState) => {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultState;
-  } catch (err) {
-    console.error(`Error retrieving state for key "${key}":`, err);
-    return defaultState;
-  }
-}
+import { getInitialState } from './utils/InitialState';
 
 function App() {
   // React state to manage nodes and edges
@@ -46,16 +37,11 @@ function App() {
   const instance = useReactFlow(); // Get the React Flow instance
 
   const onKeyDown = useCallback((event) => {
-    // console.log('Edges', edges);
     if (event.key === 'Delete' || event.key === 'Backspace') {
       setNodes((nds) => nds.filter((node) => !node.selected));
       setEdges((eds) => eds.filter((edge) => !edge.selected));
     }
   }, [setNodes, setEdges]);
-
-  // useEffect(() => {
-  //   console.log('Updated Edges:', edges);
-  // }, [edges]);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_NODES_KEY, JSON.stringify(nodes));
@@ -99,7 +85,6 @@ function App() {
   const onConnect = useCallback((params) => {
     setEdges((eds) => {
       const updatedEdges = addEdge(params, eds);
-      // console.log('Edges after connect:', updatedEdges);
       localStorage.setItem(LOCAL_STORAGE_EDGES_KEY, JSON.stringify(updatedEdges));
       return updatedEdges;
     });
@@ -120,7 +105,6 @@ function App() {
         },
         type: 'textNode', // Use our custom TextNode type
       };
-      console.log("Node:", newNode);
       return [...nds, newNode];
     });
     setTimeout(() => {
@@ -134,7 +118,6 @@ function App() {
     }
     event.preventDefault(); // Prevent default browser paste behavior
     const pastedText = event.clipboardData.getData('text');
-    console.log('Pasted text:', pastedText);
 
     if (pastedText) {
       // Get the current mouse position (where the paste event occurred)
@@ -163,7 +146,6 @@ function App() {
       const res = await fetch(BACKEND_GET_ENDPOINT);
       if (res.status===200) {
         const { capturedData } = await res.json();
-        // console.log('Captured Data:', capturedData);
 
         let newNodeContent = '';
         // inserting new node with captured data
@@ -172,7 +154,6 @@ function App() {
         } else {
           newNodeContent = capturedData.title + '\n\n' + capturedData.url;
         }
-        console.log(newNodeContent);
 
         setNodes((nds) => {
           const newNode = {
