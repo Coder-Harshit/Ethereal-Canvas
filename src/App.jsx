@@ -14,29 +14,20 @@ import {
 } from '@xyflow/react';
 import { v4 as uuidv4 } from 'uuid';
 import './App.css'
-import TextNode from './components/TextNode';
 import '@xyflow/react/dist/style.css';
+import {
+  POLLING_RATE,
+  BACKEND_GET_ENDPOINT,
+  LOCAL_STORAGE_NODES_KEY,
+  LOCAL_STORAGE_EDGES_KEY
+} from './configurations';
 
-const LOCAL_STORAGE_NODES_KEY = 'ethereal-canvas-nodes';
-const LOCAL_STORAGE_EDGES_KEY = 'ethereal-canvas-edges';
+import {
+  initalNodes,
+  initalEdges
 
-// Inital Nodes
-const initalNodes = [
-  {
-    id: '1',
-    position: { x: 100, y: 100 }, // Position on the canvas
-    data: {
-      value: 'My First Ethereal Note'
-    }, // Content of the note
-    type: 'textNode',
-  }
-]
-
-const nodeTypes = {
-  textNode: TextNode
-}
-
-const initalEdges = []
+} from './placeholder';
+import nodeTypes from './nodetypes';
 
 const getInitialState = (key, defaultState) => {
   try {
@@ -169,7 +160,7 @@ function App() {
   const pollForCapture = async (setNodes, onNodeTextChange, instance, internalIdRef) => {
     // need to poll the backend for captured data
     try {
-      const res = await fetch('http://localhost:3001/get-capture');
+      const res = await fetch(BACKEND_GET_ENDPOINT);
       if (res.status===200) {
         const { capturedData } = await res.json();
         // console.log('Captured Data:', capturedData);
@@ -227,7 +218,7 @@ function App() {
     pollingIntervalId.current = setInterval(() => {
       // Pass required dependencies to the polling function
       pollForCapture(setNodes, onNodeTextChange, instance, pollingIntervalId);
-    }, 1000 * 60);
+    }, POLLING_RATE);
 
     // Cleanup: clear interval when component unmounts
     return () => {
