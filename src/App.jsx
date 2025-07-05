@@ -19,7 +19,8 @@ import {
   POLLING_RATE,
   BACKEND_GET_ENDPOINT,
   LOCAL_STORAGE_NODES_KEY,
-  LOCAL_STORAGE_EDGES_KEY
+  LOCAL_STORAGE_EDGES_KEY,
+  SIMILARITY_THRESHOLD,
 } from './configurations';
 
 import {
@@ -29,13 +30,103 @@ import {
 } from './placeholder';
 import nodeTypes from './nodetypes';
 import { getInitialState } from './utils/InitialState';
+import { extractKeywords, calculateKeywordSimilarity } from './utils/textProcessing';
+
+// --- Helper for calculating new node position AND finding similar notes for linking ---
+// This function now returns both the position and potential edges
+const findBestPlacementAndLinks = (newNodeContent, existingNodes, instance) => {
+  let bestPosition = instance ? instance.screenToFlowPosition({
+    x: window.innerWidth / 2 - 100,
+    y: window.innerHeight / 2 - 50
+  }) : { x: Math.random() * 500, y: Math.random() * 500 }; // Default fallback
+
+  const suggestedEdges = [];
+  let mostSimilarNode = null;
+  let maxSimilarity = 0;
+
+  if (newNodeContent && existingNodes.length > 0) {
+    console.log("New Node Content:", newNodeContent);
+    // if new node has some content within it and also there is at least one existing node
+    for (const node of existingNodes) {
+      if (node.data && node.data.value) {
+        console.log("NODE DATA:", node.data);
+        const similarity = calculateKeywordSimilarity(newNodeContent, node.data.value);
+        if (similarity > maxSimilarity) {
+          maxSimilarity = similarity;
+          mostSimilarNode = node;
+        }
+        // If similarity is above threshold, suggest a link
+        if (similarity >= SIMILARITY_THRESHOLD) {
+          suggestedEdges.push({
+            id: `e${uuidv4()}`, // Unique ID for the edge
+            source: 'NEW_NODE_PLACEHOLDER', // Will replace this with new node's ID
+            target: node.id,
+            type: 'default', // Or a custom type for automatic links
+            // You can add data to edges too if needed, e.g., similarity score
+            data: { similarityScore: similarity }
+          });
+        }
+      }
+    }
+  }
+
+  // Determine the best position
+  if (mostSimilarNode && maxSimilarity > 0) {
+    // Place near the most similar node with a slight offset
+    const offset = { x: -250, y: 0 }; // Place new note to the left of the similar node
+    bestPosition = {
+      x: mostSimilarNode.position.x + (mostSimilarNode.width || 200) + offset.x, // Use width if available
+      y: mostSimilarNode.position.y + offset.y,
+    };
+  }
+  // Otherwise, bestPosition remains the viewport center/random fallback.
+
+  return { position: bestPosition, suggestedEdges: suggestedEdges };
+};
+
+
+const pollForCapture = async (addNewNoteAndLinks, internalIdRef) => {
+  // need to poll the backend for captured data
+  try {
+    const res = await fetch(BACKEND_GET_ENDPOINT);
+    if (res.status === 200) {
+      const { capturedData } = await res.json();
+
+      let newNodeContent = '';
+      // inserting new node with captured data
+      if (capturedData.text) {
+        newNodeContent = capturedData.title + '\n\n' + capturedData.text + '\n\n' + capturedData.url;
+      } else {
+        newNodeContent = capturedData.title + '\n\n' + capturedData.url;
+      }
+
+      addNewNoteAndLinks(newNodeContent);
+
+      // // fit the view to include the new node
+      // setTimeout(() => {
+      //   instance.fitView();
+      // }, 0);
+    } else if (res.status === 204) {
+      // No content
+    } else {
+      console.error('Error fetching captured data:', res.status);
+    }
+  } catch (error) {
+    console.error('Error during polling:', error);
+    if (internalIdRef && internalIdRef.current) {
+      clearInterval(internalIdRef.current);
+      internalIdRef.current = null;
+      console.warn('Stopped polling for captured notes. Local API server might be down.');
+    }
+  }
+};
+
 
 function App() {
   // React state to manage nodes and edges
   const [nodes, setNodes] = useState(() => getInitialState(LOCAL_STORAGE_NODES_KEY, initalNodes));
   const [edges, setEdges] = useState(() => getInitialState(LOCAL_STORAGE_EDGES_KEY, initalEdges));
   const instance = useReactFlow(); // Get the React Flow instance
-
   //TODO: Implement the undo & redo operation keybind
   const onKeyDown = useCallback((event) => {
     //TODO: Confirm Deletion Popup => *{checkout: https://reactflow.dev/api-reference/types/on-before-delete}*
@@ -55,7 +146,23 @@ function App() {
 
   // This handles all node changes (dragging, selection, etc.) from React Flow
   const onNodesChange = useCallback((changes) => {
-    setNodes((nds) => applyNodeChanges(changes, nds));
+    setNodes((nds) => {
+      const updatedNodes = applyNodeChanges(changes, nds).map(
+        node => {
+          const changedNode = changes.find(c => c.id === node.id);
+          if (changedNode && (changedNode.type === 'position' || changedNode.type === 'select')) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                lastAccessed: Date.now(), // Update timestamp
+              }
+            };
+          }
+          return node;
+        });
+      return updatedNodes;
+    });
   }, [setNodes]);
 
   // This handles all edge changes (dragging, selection, etc.) from React Flow
@@ -74,6 +181,7 @@ function App() {
             data: {
               ...node.data,
               label: newValue,
+              value: newValue,
               lastAccessed: Date.now() // Update last accessed time
             },
           };
@@ -92,27 +200,48 @@ function App() {
     });
   }, [setEdges]);
 
-  const addNode = useCallback(() => {
-    setNodes((nds) => {
+  // Unified function to add a new note with content and potentially link it
+  const addNewNoteAndLinks = useCallback((content) => {
+    setNodes((currentNodes) => {
+      // Use the helper to find position and potential links
+      const { position: newPosition, suggestedEdges: initialSuggestedEdges } =
+        findBestPlacementAndLinks(content, currentNodes, instance);
+
+      const newNodeId = uuidv4(); // Generate ID for the new node
+
       const newNode = {
-        id: uuidv4(), // ID generation
-        position: instance ? instance.screenToFlowPosition({
-          x: window.innerWidth/2 - 100,
-          y: window.innerHeight/2 - 50,
-        }) : { x: Math.random() * 500, y: Math.random() * 500 }, // Fallback to Random position
-        // position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
-        data: {
-          value: 'New Ethereal Note',
-          lastAccessed: Date.now(), // Track when this node was last accessed
-        },
-        type: 'textNode', // Use our custom TextNode type
+        id: newNodeId,
+        position: newPosition,
+        data: { value: content, onTextChange: onNodeTextChange, lastAccessed: Date.now() },
+        type: 'textNode',
       };
-      return [...nds, newNode];
+
+      // Add the new node
+      const updatedNodes = [...currentNodes, newNode];
+      console.log("Updated Nodes:", updatedNodes);
+      // Now add the edges, replacing the placeholder with the actual new node's ID
+      setEdges((currentEdges) => {
+        const newEdges = initialSuggestedEdges.map(edge => ({
+          ...edge,
+          source: newNodeId, // Replace placeholder
+        }));
+        return [...currentEdges, ...newEdges];
+      });
+      console.log("RETURN TYPE:", typeof updatedNodes);
+      return updatedNodes;
     });
+
+    // Optionally fit view to new node (might need a slight delay)
     // setTimeout(() => {
-    //   instance.fitView(); // Fit the view to include the new node
-    // }, 0);
-  }, [setNodes, instance, onNodeTextChange]);
+    //   instance.fitView({ nodes: [{ id: newNodeId }], padding: 0.5 });
+    // }, 50); // Small delay to ensure node is rendered
+  }, [setNodes, setEdges, onNodeTextChange, instance]);
+
+
+  // Update addNode to use the new unified function
+  const addNode = useCallback(() => {
+    addNewNoteAndLinks('New Ethereal Note');
+  }, [addNewNoteAndLinks]);
 
   const onPaste = useCallback((event) => {
     if (event.target.tagName.toLowerCase() === 'input' || event.target.tagName.toLowerCase() === 'textarea') {
@@ -122,76 +251,9 @@ function App() {
     const pastedText = event.clipboardData.getData('text');
 
     if (pastedText) {
-      // Get the current mouse position (where the paste event occurred)
-      const flowPosition = instance.screenToFlowPosition({
-        // x: event.clientX,
-        // y: event.clientY
-        x: Math.random() * 500,
-        y: Math.random() * 500, // Random position
-      });
-
-      setNodes((nds) => {
-        const newNode = {
-          id: uuidv4(),
-          position: flowPosition, // Place node at paste location
-          data: { value: pastedText, label: pastedText, onTextChange: onNodeTextChange },
-          type: 'textNode',
-        };
-        return [...nds, newNode];
-      });
+      addNewNoteAndLinks(pastedText);
     }
-  }, [instance, setNodes, onNodeTextChange]);
-
-  const pollForCapture = async (setNodes, onNodeTextChange, instance, internalIdRef) => {
-    // need to poll the backend for captured data
-    try {
-      const res = await fetch(BACKEND_GET_ENDPOINT);
-      if (res.status===200) {
-        const { capturedData } = await res.json();
-
-        let newNodeContent = '';
-        // inserting new node with captured data
-        if (capturedData.text) {
-          newNodeContent = capturedData.title + '\n\n' + capturedData.text + '\n\n' + capturedData.url;
-        } else {
-          newNodeContent = capturedData.title + '\n\n' + capturedData.url;
-        }
-
-        setNodes((nds) => {
-          const newNode = {
-            id: uuidv4(),
-            position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random position
-            data: {
-              value: newNodeContent,
-              label: newNodeContent,
-              onTextChange: onNodeTextChange,
-              lastAccessed: Date.now(), // Track when this node was last accessed
-            },
-            type: 'textNode',
-          }
-          return [...nds, newNode];
-        });
-
-        // fit the view to include the new node
-        setTimeout(() => {
-          instance.fitView();
-        }, 0);
-
-
-      } else if (res.status === 204) {
-        // No content
-      } else {
-        console.error('Error fetching captured data:', res.status);
-      }
-    } catch (error) {
-      console.error('Error during polling:', error);
-      if (internalIdRef && internalIdRef.current) {
-        clearInterval(internalIdRef.current);
-        internalIdRef.current = null;
-        console.warn('Stopped polling for captured notes. Local API server might be down.');
-      }
-    }
-  };
+  }, [addNewNoteAndLinks]);
 
   // Ref to store the interval ID so we can clear it later
   const pollingIntervalId = useRef(null);
@@ -200,7 +262,7 @@ function App() {
     // Start polling every minute
     pollingIntervalId.current = setInterval(() => {
       // Pass required dependencies to the polling function
-      pollForCapture(setNodes, onNodeTextChange, instance, pollingIntervalId);
+      pollForCapture(addNewNoteAndLinks, pollingIntervalId);
     }, POLLING_RATE);
 
     // Cleanup: clear interval when component unmounts
@@ -209,7 +271,7 @@ function App() {
         clearInterval(pollingIntervalId.current);
       }
     };
-  }, [setNodes, onNodeTextChange, instance]); // Dependencies for useEffect
+  }, [addNewNoteAndLinks]); // Dependencies for useEffect
 
   return (
     // TODO: Make the viewport controls more natural flowing
@@ -227,6 +289,8 @@ function App() {
         onKeyDown={onKeyDown} // Handle keydown events for delete/backspace
         tabIndex={0} // Make the div focusable to capture key events
       >
+        {/* {console.log("Value of nodes:", nodes)} */}
+
         <ReactFlow
           nodes={
             nodes.map(node => ({
@@ -249,17 +313,17 @@ function App() {
           proOptions={{ hideAttribution: true }} // Hide attribution for pro features
           selectionMode={SelectionMode.Partial}
           preventScrolling={false} // Prevent scrolling when dragging nodes
->
+        >
           <Controls /> {/* Zoom, pan, fit buttons */}
-          <MiniMap 
+          <MiniMap
             zoomable={true}
             pannable={true}
-            // nodeColor={(node) => {
-            //   if (node.type === 'textNode') {
-            //     return '#00ff00'; // Green for text nodes
-            //   }
-            //   return '#ff0000'; // Red for other nodes
-            // }}
+          // nodeColor={(node) => {
+          //   if (node.type === 'textNode') {
+          //     return '#00ff00'; // Green for text nodes
+          //   }
+          //   return '#ff0000'; // Red for other nodes
+          // }}
           /> {/* Small overview map */}
           <Background variant="dots" gap={12} size={1} /> {/* Dotted background */}
           {/* <Panel position="top-right" className="bg-transparent text-[#eee] p-2 rounded shadow-lg"> */}
