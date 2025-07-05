@@ -212,7 +212,12 @@ function App() {
       const newNode = {
         id: newNodeId,
         position: newPosition,
-        data: { value: content, onTextChange: onNodeTextChange, lastAccessed: Date.now() },
+        data: {
+          value: content,
+          label: content,
+          onTextChange: onNodeTextChange,
+          lastAccessed: Date.now()
+        },
         type: 'textNode',
       };
 
