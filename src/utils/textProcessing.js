@@ -20,8 +20,8 @@ export const calculateKeywordSimilarity = (text1, text2) => {
 
     const keywords1 = extractKeywords(text1);
     const keywords2 = extractKeywords(text2);
-    console.log("Keywords 1:", keywords1);
-    console.log("Keywords 2:", keywords2);
+    // console.log("Keywords 1:", keywords1);
+    // console.log("Keywords 2:", keywords2);
     let commonKeywordsCount = 0;
     for (const keyword of keywords1) {
         if (keywords2.has(keyword)) {

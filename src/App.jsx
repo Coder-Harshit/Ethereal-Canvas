@@ -45,11 +45,9 @@ const findBestPlacementAndLinks = (newNodeContent, existingNodes, instance) => {
   let maxSimilarity = 0;
 
   if (newNodeContent && existingNodes.length > 0) {
-    console.log("New Node Content:", newNodeContent);
     // if new node has some content within it and also there is at least one existing node
     for (const node of existingNodes) {
       if (node.data && node.data.value) {
-        console.log("NODE DATA:", node.data);
         const similarity = calculateKeywordSimilarity(newNodeContent, node.data.value);
         if (similarity > maxSimilarity) {
           maxSimilarity = similarity;
@@ -120,7 +118,6 @@ const pollForCapture = async (addNewNoteAndLinks, internalIdRef) => {
     }
   }
 };
-
 
 function App() {
   // React state to manage nodes and edges
@@ -201,12 +198,17 @@ function App() {
   }, [setEdges]);
 
   // Unified function to add a new note with content and potentially link it
-  const addNewNoteAndLinks = useCallback((content) => {
+  const addNewNoteAndLinks = useCallback((content, positioning_mode = 'auto', autoLink = true, drop_props) => {
+    positioning_mode === 'auto' || positioning_mode === 'drop' ? positioning_mode : 'auto';
     setNodes((currentNodes) => {
       // Use the helper to find position and potential links
-      const { position: newPosition, suggestedEdges: initialSuggestedEdges } =
+      let { position: newPosition, suggestedEdges: initialSuggestedEdges } =
         findBestPlacementAndLinks(content, currentNodes, instance);
-
+      // If positioning_mode is 'drop', use provided x_pos and y_pos
+      newPosition = positioning_mode === 'drop' ? {
+        x: drop_props.x_pos,
+        y: drop_props.y_pos
+      } : newPosition;
       const newNodeId = uuidv4(); // Generate ID for the new node
 
       const newNode = {
@@ -219,20 +221,31 @@ function App() {
           lastAccessed: Date.now()
         },
         type: 'textNode',
+
       };
 
       // Add the new node
       const updatedNodes = [...currentNodes, newNode];
-      console.log("Updated Nodes:", updatedNodes);
-      // Now add the edges, replacing the placeholder with the actual new node's ID
-      setEdges((currentEdges) => {
-        const newEdges = initialSuggestedEdges.map(edge => ({
-          ...edge,
-          source: newNodeId, // Replace placeholder
-        }));
-        return [...currentEdges, ...newEdges];
-      });
-      console.log("RETURN TYPE:", typeof updatedNodes);
+      if (autoLink) {
+        // Now add the edges, replacing the placeholder with the actual new node's ID
+        setEdges((currentEdges) => {
+          const newEdges = initialSuggestedEdges.map(edge => ({
+            ...edge,
+            source: newNodeId, // Replace placeholder
+          }));
+          return [...currentEdges, ...newEdges];
+        });
+      } else if (positioning_mode === 'drop') {
+        // If not auto-linking, just add the new node without edges
+        setEdges(
+          (eds) =>
+            eds.concat({
+              id: `e${uuidv4()}`,
+              source: drop_props.src,
+              target: newNodeId
+            }),
+        );
+      }
       return updatedNodes;
     });
 
@@ -245,7 +258,7 @@ function App() {
 
   // Update addNode to use the new unified function
   const addNode = useCallback(() => {
-    addNewNoteAndLinks('New Ethereal Note');
+    addNewNoteAndLinks('New Ethereal Note', "auto", true);
   }, [addNewNoteAndLinks]);
 
   const onPaste = useCallback((event) => {
@@ -278,6 +291,41 @@ function App() {
     };
   }, [addNewNoteAndLinks]); // Dependencies for useEffect
 
+  const onConnectEnd = useCallback(
+    (event, connectionState) => {
+      // when a connection is dropped on the pane it's not valid
+      if (!connectionState.isValid) {
+        let drop_props = {
+          x_pos: event.clientX,
+          y_pos: event.clientY,
+          src: connectionState.fromNode.id
+        }
+        addNewNoteAndLinks('New Ethereal Note', 'drop', false, drop_props);
+        // // we need to remove the wrapper bounds, in order to get the correct position
+        // const id = uuidv4(); // Generate a unique ID for the new node
+        // const { clientX, clientY } =
+        //   'changedTouches' in event ? event.changedTouches[0] : event;
+        // const newNode = {
+        //   id,
+        //   position: instance.screenToFlowPosition({
+        //     x: clientX,
+        //     y: clientY,
+        //   }),
+        //   data: { label: `Node ${id}` },
+        //   origin: [0.5, 0.0],
+        // };
+
+        // setNodes((nds) => nds.concat(newNode));
+        // setEdges((eds) =>
+        //   eds.concat({ id, source: connectionState.fromNode.id, target: id }),
+        // );
+      }
+    },
+    [instance.screenToFlowPosition],
+  );
+
+
+
   return (
     // TODO: Make the viewport controls more natural flowing
     // TODO: add some kind of view port controls help button
@@ -294,7 +342,6 @@ function App() {
         onKeyDown={onKeyDown} // Handle keydown events for delete/backspace
         tabIndex={0} // Make the div focusable to capture key events
       >
-        {/* {console.log("Value of nodes:", nodes)} */}
 
         <ReactFlow
           nodes={
@@ -310,6 +357,7 @@ function App() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectEnd={onConnectEnd}
           fitView // Zooms to fit all nodes initially
           maxZoom={5}
           minZoom={0.5}
