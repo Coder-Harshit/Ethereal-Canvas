@@ -1,4 +1,4 @@
-FROM node:24-alpine
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm i --production
@@ -7,8 +7,9 @@ RUN npm run build
 # building is completed
 
 FROM nginx:alpine
-COPY /app/dist /usr/share/nginx/html
+WORKDIR /app
+COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
-# CMD ["ngnix"]
-CMD ["ngnix","-g","daemon off;"] 
+# CMD ["nginx"]
+CMD ["nginx","-g","daemon off;"] 
 # better
