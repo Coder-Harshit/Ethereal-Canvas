@@ -301,30 +301,20 @@ function App() {
           src: connectionState.fromNode.id
         }
         addNewNoteAndLinks('New Ethereal Note', 'drop', false, drop_props);
-        // // we need to remove the wrapper bounds, in order to get the correct position
-        // const id = uuidv4(); // Generate a unique ID for the new node
-        // const { clientX, clientY } =
-        //   'changedTouches' in event ? event.changedTouches[0] : event;
-        // const newNode = {
-        //   id,
-        //   position: instance.screenToFlowPosition({
-        //     x: clientX,
-        //     y: clientY,
-        //   }),
-        //   data: { label: `Node ${id}` },
-        //   origin: [0.5, 0.0],
-        // };
-
-        // setNodes((nds) => nds.concat(newNode));
-        // setEdges((eds) =>
-        //   eds.concat({ id, source: connectionState.fromNode.id, target: id }),
-        // );
       }
     },
     [instance.screenToFlowPosition],
   );
 
+  // const isValidConnection = (connection) => {
+  //   // Only allow connections from a source handle to a target handle
+  //   if (!connection.sourceHandle || !connection.targetHandle) return false;
 
+  //   // Prevent self-loop
+  //   if (connection.source === connection.target) return false;
+
+  //   return true;
+  // }
 
   return (
     // TODO: Make the viewport controls more natural flowing
@@ -366,6 +356,7 @@ function App() {
           proOptions={{ hideAttribution: true }} // Hide attribution for pro features
           selectionMode={SelectionMode.Partial}
           preventScrolling={false} // Prevent scrolling when dragging nodes
+          // isValidConnection={isValidConnection} // Validate connections
         >
           <Controls /> {/* Zoom, pan, fit buttons */}
           <MiniMap
