@@ -30,10 +30,8 @@ import {
 } from './placeholder';
 import nodeTypes from './nodetypes';
 import { getInitialState } from './utils/InitialState';
-import { extractKeywords, calculateKeywordSimilarity } from './utils/textProcessing';
+import { calculateKeywordSimilarity } from './utils/textProcessing';
 
-// --- Helper for calculating new node position AND finding similar notes for linking ---
-// This function now returns both the position and potential edges
 const findBestPlacementAndLinks = (newNodeContent, existingNodes, instance) => {
   let bestPosition = instance ? instance.screenToFlowPosition({
     x: window.innerWidth / 2 - 100,
@@ -48,7 +46,7 @@ const findBestPlacementAndLinks = (newNodeContent, existingNodes, instance) => {
     // if new node has some content within it and also there is at least one existing node
     for (const node of existingNodes) {
       if (node.data && node.data.value) {
-        const similarity = calculateKeywordSimilarity(newNodeContent, node.data.value);
+        const similarity = calculateKeywordSimilarity(newNodeContent.body, node.data.value);
         if (similarity > maxSimilarity) {
           maxSimilarity = similarity;
           mostSimilarNode = node;
@@ -90,12 +88,19 @@ const pollForCapture = async (addNewNoteAndLinks, internalIdRef) => {
     if (res.status === 200) {
       const { capturedData } = await res.json();
 
-      let newNodeContent = '';
+      let newNodeContent = {
+        title: 'Title',
+        body: 'My Ethereal Note',
+        urls: []
+      };
       // inserting new node with captured data
       if (capturedData.text) {
-        newNodeContent = capturedData.title + '\n\n' + capturedData.text + '\n\n' + capturedData.url;
+        newNodeContent.title = capturedData.title
+        newNodeContent.body = capturedData.text
+        newNodeContent.urls.push(capturedData.url)
       } else {
-        newNodeContent = capturedData.title + '\n\n' + capturedData.url;
+        newNodeContent.title = capturedData.title
+        newNodeContent.urls.push(capturedData.url);
       }
 
       addNewNoteAndLinks(newNodeContent);
@@ -167,7 +172,6 @@ function App() {
     setEdges((nds) => applyEdgeChanges(changes, nds));
   }, [setEdges]);
 
-  // This specific handler is for when the text inside our custom TextNode changes
   const onNodeTextChange = useCallback((id, newValue) => {
     setNodes((nds) =>
       nds.map((node) => {
@@ -178,7 +182,7 @@ function App() {
             data: {
               ...node.data,
               label: newValue,
-              value: newValue,
+              value: newValue.body,
               lastAccessed: Date.now() // Update last accessed time
             },
           };
@@ -215,7 +219,7 @@ function App() {
         id: newNodeId,
         position: newPosition,
         data: {
-          value: content,
+          value: content.body, // for similarity matching
           label: content,
           onTextChange: onNodeTextChange,
           lastAccessed: Date.now()
@@ -258,7 +262,11 @@ function App() {
 
   // Update addNode to use the new unified function
   const addNode = useCallback(() => {
-    addNewNoteAndLinks('New Ethereal Note', "auto", true);
+    addNewNoteAndLinks({
+      title: 'Header',
+      body: 'Ethereal Note',
+      urls: ['https://music.youtube.com/watch?v=m3B_RHmUwtM&list=RDAMVMm3B_RHmUwtM']
+    }, "auto", true);
   }, [addNewNoteAndLinks]);
 
   const onPaste = useCallback((event) => {
@@ -269,7 +277,7 @@ function App() {
     const pastedText = event.clipboardData.getData('text');
 
     if (pastedText) {
-      addNewNoteAndLinks(pastedText);
+      addNewNoteAndLinks({ title: 'Pasted Note', body: pastedText, urls: [] });
     }
   }, [addNewNoteAndLinks]);
 
@@ -300,10 +308,10 @@ function App() {
           y_pos: event.clientY,
           src: connectionState.fromNode.id
         }
-        addNewNoteAndLinks('New Ethereal Note', 'drop', false, drop_props);
+        addNewNoteAndLinks({ title: 'New Note', body: 'New Ethereal Note', urls: [] }, 'drop', false, drop_props);
       }
     },
-    [instance.screenToFlowPosition],
+    [addNewNoteAndLinks],
   );
 
   // const isValidConnection = (connection) => {
@@ -356,7 +364,7 @@ function App() {
           proOptions={{ hideAttribution: true }} // Hide attribution for pro features
           selectionMode={SelectionMode.Partial}
           preventScrolling={false} // Prevent scrolling when dragging nodes
-          // isValidConnection={isValidConnection} // Validate connections
+        // isValidConnection={isValidConnection} // Validate connections
         >
           <Controls /> {/* Zoom, pan, fit buttons */}
           <MiniMap

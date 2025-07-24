@@ -1,7 +1,7 @@
-import TextNode from './components/TextNode';
+import CustomNode from './components/CustomNode';
 
 const nodeTypes = {
-    textNode: TextNode
+    textNode: CustomNode
 };
 
 export default nodeTypes;
