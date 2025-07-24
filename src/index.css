@@ -97,3 +97,7 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.react-flow__node-resizer {
+    border-color: #646cff;
+}

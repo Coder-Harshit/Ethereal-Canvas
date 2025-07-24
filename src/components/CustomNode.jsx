@@ -1,84 +1,98 @@
-// src/components/CustomNode.jsx
-import { Handle, Position } from '@xyflow/react'; // Handle is for connecting nodes
-import { memo } from 'react';
+import { Handle, Position, useStore, NodeResizer } from '@xyflow/react';
+import { memo, useState, useCallback, useRef} from 'react';
 import LinkPill from './LinkPill';
+import { ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 
-let MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days in milliseconds
-const MIN_OPACITY = 0.3; // Minimum opacity for the note
+const useIsConnecting = () => {
+    const isConnecting = useStore(
+        (s) => s.connectionNodeId !== null || s.connectionStartHandle !== null
+    );
+    return isConnecting;
+};
 
+const MIN_OPACITY = 0.3;
+const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+const URL_AREA_RATIO = 0.4; // 40% of the node height
 
-// This component will render our custom node
-function CustomNode({ id, data }) {
-    // The `data` prop will contain `label` (our note text) and `onTextChange` (a function from App.jsx)
+// function CustomNode({ id, data, selected, width, height }) {
+function CustomNode({ id, data, selected, height }) {
+    const isConnecting = useIsConnecting();
+    const [copied, setCopied] = useState(false);
+    const urlAreaRef = useRef(null);
+
     const ageMs = Date.now() - (data.lastAccessed || 0);
-    // const opacity = Math.trunc((Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS)) * 100); // Calculate opacity based on age
-    // console.log('Opacity:', (Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS)));
+    const opacity = Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS);
 
-    const onTitleChange = (evt) => {
-        if (data.onTextChange) {
-            data.onTextChange(id, { ...data.label, title: evt.target.value });
-        }
-    };
+    const onTitleChange = useCallback((evt) => {
+        data.onTextChange?.(id, { ...data.label, title: evt.target.value });
+    }, [data, id]);
 
-    const onBodyChange = (evt) => {
-        if (data.onTextChange) {
-            data.onTextChange(id, { ...data.label, body: evt.target.value });
-        }
-    };
+    const onBodyChange = useCallback((evt) => {
+        data.onTextChange?.(id, { ...data.label, body: evt.target.value });
+    }, [data, id]);
+
+    const handleCopy = useCallback(() => {
+        const content = `${data.label.title}\n\n${data.label.body}`;
+        navigator.clipboard.writeText(content).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    }, [data.label.title, data.label.body]);
+
+    const maxUrlAreaHeight = height ? height * URL_AREA_RATIO : 'auto';
 
     return (
         <div
-            className="p-4 border border-[#555] rounded bg-[#333] text-[#eee] shadow-lg flex flex-col box-border"
-            style={{ opacity: Math.max(MIN_OPACITY, 1 - ageMs / MAX_AGE_MS) }}
-            onWheel={e => e.stopPropagation()} // Prevent scroll wheel from bubbling up to React Flow
-
+            className="p-4 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 shadow-xl flex flex-col box-border relative transition-all duration-300 group hover:border-purple-500 h-full"
+            style={{ opacity }}
+            onWheel={(e) => e.stopPropagation()}
         >
-            {/* Handle for incoming connections (left of the note) */}
-            {/*TODO: Make the "in" handle 'vibe' when out node is pulled out*/}
+            <NodeResizer isVisible={selected} minWidth={250} minHeight={200} maxWidth={800} maxHeight={1000} />
             <Handle
                 type="target"
                 position={Position.Left}
-                className='!bg-amber-200'
+                className={`w-3 h-3 rounded-full border-2 border-gray-800 !bg-amber-400 transition-all duration-200 ease-in-out hover:scale-150 ${isConnecting ? 'scale-150 shadow-lg shadow-amber-400/50' : ''}`}
             />
-            <div className='flex flex-col'>
+            <div className="flex flex-col gap-2 h-full">
                 <input
                     type="text"
                     value={data.label.title}
                     onChange={onTitleChange}
-                    className="h1 border-0 outline-0" // Prevents dragging the note when dragging inside the textarea
-                    onKeyDown={e => e.stopPropagation()}
+                    className="bg-transparent text-lg font-bold outline-none border-none p-0 text-gray-200 flex-shrink-0"
+                    onKeyDown={(e) => e.stopPropagation()}
+                    placeholder="Node Title"
                 />
-
-                <textarea
-                    value={data.label.body} // Display the current text
-                    onChange={onBodyChange} // Update text when user types
-                    className="border-none bg-transparent text-inherit font-inherit text-[14px] p-0 box-border flex-grow focus:outline-none nodrag resize overflow-auto min-w-[100px] max-w-[600px]" // Prevents dragging the note when dragging inside the textarea
-                    rows={5} // Default number of rows
-                    cols={20} // Default number of columns
-                    onKeyDown={e => e.stopPropagation()} // Prevent delete/backspace from bubbling up to React Flow
-                    onWheel={e => {
-                        e.stopPropagation()
-                    }} // Prevent scroll wheel from bubbling up to React Flow
-                />
-
+                <div className="flex-grow relative">
+                    <textarea
+                        value={data.label.body}
+                        onChange={onBodyChange}
+                        className="bg-transparent text-sm outline-none border-none p-0 resize-none text-gray-300 absolute top-0 left-0 w-full h-full"
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder="Node content..."
+                    />
+                </div>
                 {data.label.urls && data.label.urls.length > 0 && (
-                    <div className=''>
+                    <div 
+                        ref={urlAreaRef}
+                        className="mt-2 flex flex-col gap-2 flex-shrink-0 overflow-y-auto"
+                        style={{ maxHeight: `${maxUrlAreaHeight}px` }}
+                    >
                         {data.label.urls.map((url, index) => (
                             <LinkPill key={index} url={url} />
                         ))}
                     </div>
                 )}
             </div>
-
-            {/* Handle for outgoing connections (right of the note) */}
-            {/*TODO: Make the "out" handle 'vibe' when in node is pulled out*/}
+            <button onClick={handleCopy} className="absolute top-2 right-2 p-1 bg-gray-700 rounded-md hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                {copied ? <ClipboardDocumentCheckIcon className="w-5 h-5 text-green-500" /> : <ClipboardIcon className="w-5 h-5 text-gray-400" />}
+            </button>
             <Handle
                 type="source"
                 position={Position.Right}
-                className='!bg-green-200'
+                className={`w-3 h-3 rounded-full border-2 border-gray-800 !bg-teal-400 transition-all duration-200 ease-in-out hover:scale-150 ${isConnecting ? 'scale-150 shadow-lg shadow-teal-400/50' : ''}`}
             />
         </div>
     );
 }
 
-export default memo(CustomNode); // Use memo to prevent unnecessary re-renders
+export default memo(CustomNode);
