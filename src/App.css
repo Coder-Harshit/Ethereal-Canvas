@@ -86,3 +86,21 @@ h1 {
   margin-top: 20px;
   color: #333;
 } */
+
+.markdown-body .prose a {
+    color: #93c5fd;
+}
+
+.markdown-body .prose a:hover {
+    color: #60a5fa;
+}
+
+.custom-node-body {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.custom-node:focus {
+    outline: 2px solid #a855f7;
+    outline-offset: 2px;
+}

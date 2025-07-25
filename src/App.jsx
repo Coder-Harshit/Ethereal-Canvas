@@ -31,6 +31,7 @@ import {
 import nodeTypes from './nodetypes';
 import { getInitialState } from './utils/InitialState';
 import { calculateKeywordSimilarity } from './utils/textProcessing';
+import { parseAndTransform, syncUrls } from './utils/nodeParser';
 
 const findBestPlacementAndLinks = (newNodeContent, existingNodes, instance) => {
   let bestPosition = instance ? instance.screenToFlowPosition({
@@ -177,11 +178,12 @@ function App() {
       nds.map((node) => {
         if (node.id === id) {
           // It's important to create a *new* data object to trigger React's re-render
+          const newUrls = syncUrls(newValue.body);
           return {
             ...node,
             data: {
               ...node.data,
-              label: newValue,
+              label: { ...newValue, urls: newUrls },
               value: newValue.body,
               lastAccessed: Date.now() // Update last accessed time
             },
@@ -204,10 +206,13 @@ function App() {
   // Unified function to add a new note with content and potentially link it
   const addNewNoteAndLinks = useCallback((content, positioning_mode = 'auto', autoLink = true, drop_props) => {
     positioning_mode === 'auto' || positioning_mode === 'drop' ? positioning_mode : 'auto';
+    const { text, urls } = parseAndTransform(content.body);
+    const newContent = { ...content, body: text, urls };
+
     setNodes((currentNodes) => {
       // Use the helper to find position and potential links
       let { position: newPosition, suggestedEdges: initialSuggestedEdges } =
-        findBestPlacementAndLinks(content, currentNodes, instance);
+        findBestPlacementAndLinks(newContent, currentNodes, instance);
       // If positioning_mode is 'drop', use provided x_pos and y_pos
       newPosition = positioning_mode === 'drop' ? {
         x: drop_props.x_pos,
@@ -219,8 +224,8 @@ function App() {
         id: newNodeId,
         position: newPosition,
         data: {
-          value: content.body, // for similarity matching
-          label: content,
+          value: newContent.body, // for similarity matching
+          label: newContent,
           onTextChange: onNodeTextChange,
           lastAccessed: Date.now()
         },
@@ -265,7 +270,7 @@ function App() {
     addNewNoteAndLinks({
       title: 'Header',
       body: 'Ethereal Note',
-      urls: ['https://music.youtube.com/watch?v=m3B_RHmUwtM&list=RDAMVMm3B_RHmUwtM']
+      urls: ['https://github.com/Coder-Harshit']
     }, "auto", true);
   }, [addNewNoteAndLinks]);
 
